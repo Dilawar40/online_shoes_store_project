@@ -23,14 +23,14 @@ export type CartItem = {
     currencyCode: string;
   };
   variant: ProductVariant;
-  product: Product;
+  product: Product; // This should contain all product data
   cost?: {
     totalAmount: {
       amount: number;
       currencyCode: string;
     };
   };
-  merchandise?: any; // For backward compatibility
+  merchandise?: any;
 };
 
 type Cart = {

@@ -14,20 +14,14 @@ export default function SearchLayout({
 }) {
   return (
     <>
-      <div className="mx-auto flex max-w-(--breakpoint-2xl) flex-col gap-8 px-4 pb-4 text-black md:flex-row dark:text-white">
-        <div className="order-first w-full flex-none md:max-w-[125px]">
-          <Collections
-            params={{ collection: params?.collection ?? "defaultCollection" }}
-          />
-        </div>
-        <div className="order-last min-h-screen w-full md:order-none">
+      <div className="mx-auto flex max-w-(--breakpoint-2xl) flex-col gap-8  pb-4 text-black md:flex-row dark:text-white">
+      
+        <div className="order-last min-h-screen w-full px-4 md:order-none md:px-0">
           <Suspense fallback={null}>
             <ChildrenWrapper>{children}</ChildrenWrapper>
           </Suspense>
         </div>
-        <div className="order-none flex-none md:order-last md:w-[125px]">
-          <FilterList list={sorting} title="Sort by" />
-        </div>
+     
       </div>
       <Footer />
     </>

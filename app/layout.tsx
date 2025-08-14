@@ -46,7 +46,7 @@ export default function RootLayout({
   });
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="bg-neutral-50 text-black dark:bg-neutral-900 dark:text-white">
+      <body className="bg-neutral-50 text-black dark:bg-neutral-900">
         <CartProvider cartPromise={cart}>
           <Navbar />
           <main>{children}</main>

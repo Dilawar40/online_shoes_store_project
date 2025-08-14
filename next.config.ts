@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
     'http://localhost:3000',
     'http://192.168.0.230:3000',
   ],
+  images: {
+    domains: ['dazzlebysarah.com'],
+  },
 };
 
 export default nextConfig;

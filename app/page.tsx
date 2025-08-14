@@ -1,6 +1,6 @@
-import { Carousel } from "./Carousel";
 import Footer from "./components/footer";
-import ThreeItemGrid from "./components/grid/three-items";
+import HeroCarousel from "./components/HeroCarousel";
+import SearchClient from "./search/[[...collection]]/search-client";
 
 export const metadata = {
   description:
@@ -12,10 +12,12 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <>
-      <ThreeItemGrid />
-      <Carousel />
+    <main>
+      <HeroCarousel />
+      <div className="bg-white">
+        <SearchClient initialCollection="all" />
+      </div>
       <Footer />
-    </>
+    </main>
   );
 }

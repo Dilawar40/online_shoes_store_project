@@ -16,7 +16,10 @@ export async function generateMetadata({
 }: {
   params: { handle: string };
 }): Promise<Metadata> {
-  const product = staticProducts.find((p) => p.handle === params.handle);
+  // Ensure we're working with the resolved params
+  const { handle } = await Promise.resolve(params);
+  console.log(handle);
+  const product = staticProducts.find((p) => p.handle === handle);
   if (!product) return {};
   
   return {
@@ -25,8 +28,11 @@ export async function generateMetadata({
   };
 }
 
-export default function Page({ params }: { params: { handle: string } }) {
-  const product = staticProducts.find((p) => p.handle === params.handle);
+
+export default async function Page({ params }: { params: { handle: string } }) {
+  // Ensure we're working with the resolved params
+  const { handle } = await Promise.resolve(params);
+  const product = staticProducts.find((p) => p.handle === handle);
   if (!product) return notFound();
   
   return (

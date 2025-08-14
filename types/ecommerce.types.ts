@@ -49,25 +49,20 @@ export type Product = {
 export type CartItem = {
   id: string;
   quantity: number;
-  cost: {
-    totalAmount: Money;
+  price: {
+    amount: number;
+    currencyCode: string;
   };
-  merchandise: {
-    id: string;
-    title: string;
-    selectedOptions: {
-      name: string;
-      value: string;
-    }[];
-    product: {
-      id: string;
-      handle: string;
-      title: string;
-      featuredImage: Image;
+  variant: ProductVariant;
+  product: Product; // This should contain all product data
+  cost?: {
+    totalAmount: {
+      amount: number;
+      currencyCode: string;
     };
   };
+  merchandise?: any;
 };
-
 export type Collection = {
   id: string;
   handle: string;

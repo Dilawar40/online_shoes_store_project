@@ -5,7 +5,18 @@ import Prose from "../prose";
 import { AddToCart } from "../cart/add-to-cart";
 
 export function ProductDescription({ product }: { product: Product }) {
- 
+  // Transform variants to match ProductVariant type
+  const transformedVariants = product.variants.map(variant => ({
+    ...variant,
+    price: {
+      amount: variant.price.amount.toString(),
+      currencyCode: variant.price.currencyCode || 'PKR'
+    },
+    compareAtPrice: variant.compareAtPrice ? {
+      amount: variant.compareAtPrice.amount.toString(),
+      currencyCode: variant.compareAtPrice.currencyCode || 'PKR'
+    } : undefined
+  }));
 
   return (
     <>
@@ -18,7 +29,7 @@ export function ProductDescription({ product }: { product: Product }) {
           />
         </div>
       </div>
-      <VariantSelector options={product.options} variants={product.variants} />
+      <VariantSelector options={product.options} variants={transformedVariants} />
       {product.description ? (
         <Prose
           className="mb-6 text-sm leading-tight dark:text-white/[60%]"
