@@ -7,7 +7,14 @@ const nextConfig: NextConfig = {
     'http://192.168.0.230:3000',
   ],
   images: {
-    domains: ['dazzlebysarah.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'dazzlebysarah.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
 };
 

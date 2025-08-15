@@ -47,8 +47,19 @@ export default function AdminPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+      <div className="mb-8">
+        <a 
+          href="/admin/test-upload" 
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        >
+          Go to Test Upload
+        </a>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div
+          className="bg-white p-6 rounded-lg shadow cursor-pointer"
+          onClick={() => router.push("/admin/seed-products/")}
+        >
           <h2 className="text-xl font-semibold mb-2">Products</h2>
           <p className="text-gray-600">Manage your products</p>
         </div>

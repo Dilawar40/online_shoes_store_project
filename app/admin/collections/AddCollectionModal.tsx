@@ -1,37 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-interface AddSlideModalProps {
+interface AddCollectionModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function AddSlideModal({ isOpen, onClose }: AddSlideModalProps) {
+export default function AddCollectionModal({ isOpen, onClose }: AddCollectionModalProps) {
   const [formData, setFormData] = useState({
+    sort_order: 1,
+    handle: "",
     title: "",
     description: "",
-    cta_text: "",
-    cta_link: "",
-    image_url: "",
-    alt_text: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,24 +28,22 @@ export default function AddSlideModal({ isOpen, onClose }: AddSlideModalProps) {
     setError("");
 
     try {
-      const response = await fetch("/api/slides", {
+      const res = await fetch("/api/collections", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create slide");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to create collection");
       }
 
-      await response.json();
+      await res.json();
       onClose();
     } catch (err) {
-      console.error("Error:", err);
-      setError("An error occurred while creating the slide.");
+      console.error(err);
+      setError("An error occurred while creating the collection.");
     } finally {
       setIsSubmitting(false);
     }
@@ -68,44 +54,22 @@ export default function AddSlideModal({ isOpen, onClose }: AddSlideModalProps) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-fadeIn">
-        {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Add New Hero Slide
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-          >
-            &times;
-          </button>
+          <h2 className="text-xl font-semibold text-gray-800">Add New Collection</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-100 text-red-700 px-4 py-2 text-sm">
-            {error}
-          </div>
-        )}
+        {error && <div className="bg-red-100 text-red-700 px-4 py-2 text-sm">{error}</div>}
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="px-6 py-6 space-y-4">
           {[
-            { label: "Title *", name: "title", type: "text", required: true },
-            {
-              label: "Description",
-              name: "description",
-              type: "textarea",
-            },
-            { label: "CTA Text", name: "cta_text", type: "text" },
-            { label: "CTA Link", name: "cta_link", type: "url" },
-            { label: "Image URL", name: "image_url", type: "url" },
-            { label: "Alt Text", name: "alt_text", type: "text" },
+            { label: "Sort Order", name: "sort_order", type: "number", required: true },
+            { label: "Handle", name: "handle", type: "text", required: true },
+            { label: "Title", name: "title", type: "text", required: true },
+            { label: "Description", name: "description", type: "textarea" },
           ].map((field) => (
             <div key={field.name}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {field.label}
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
               {field.type === "textarea" ? (
                 <textarea
                   name={field.name}
@@ -127,7 +91,6 @@ export default function AddSlideModal({ isOpen, onClose }: AddSlideModalProps) {
             </div>
           ))}
 
-          {/* Actions */}
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
             <button
               type="button"
@@ -141,7 +104,7 @@ export default function AddSlideModal({ isOpen, onClose }: AddSlideModalProps) {
               disabled={isSubmitting}
               className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
             >
-              {isSubmitting ? "Creating..." : "Create Slide"}
+              {isSubmitting ? "Creating..." : "Create Collection"}
             </button>
           </div>
         </form>
