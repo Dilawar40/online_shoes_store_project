@@ -23,7 +23,7 @@ async function fetchHeroSlides() {
   );
 
   const { data, error } = await supabase
-    .from("hero_slides")
+    .from("slides")
     .select("*")
     .order("id");
 

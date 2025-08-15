@@ -19,6 +19,7 @@ export default function HeroSlidesPage() {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch slides from API
   const fetchSlides = async () => {
@@ -41,6 +42,35 @@ export default function HeroSlidesPage() {
   useEffect(() => {
     fetchSlides();
   }, []);
+  const handleDeleteSlide = async (id: string) => {
+    if (!confirm("Are you sure?")) return;
+
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/slides", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to delete");
+      }
+
+      console.log("Deleted", await res.json());
+
+      // Refresh slides after delete
+      await fetchSlides();
+    } catch (err) {
+      console.log(err);
+      setError("Could not delete slide.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -60,7 +90,8 @@ export default function HeroSlidesPage() {
       {!loading && slides.length === 0 && <p>No slides found.</p>}
 
       {/* Slides List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Slides List - Row-wise */}
+      <div className="flex flex-col gap-6">
         {slides.map((slide) => (
           <div
             key={slide.id}
@@ -84,6 +115,14 @@ export default function HeroSlidesPage() {
                   {slide.cta_text || "Learn More"}
                 </a>
               )}
+
+              {/* Delete Button */}
+              <button
+                onClick={() => handleDeleteSlide(slide.id)}
+                className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))}
