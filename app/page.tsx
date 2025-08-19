@@ -15,7 +15,7 @@ export default function HomePage() {
     <main>
       <HeroCarousel />
       <div className="bg-white">
-        <SearchClient initialCollection="all" />
+        <SearchClient/>
       </div>
       <Footer />
     </main>

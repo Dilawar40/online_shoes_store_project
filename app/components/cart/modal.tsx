@@ -5,7 +5,14 @@ import { Dialog, Transition } from "@headlessui/react";
 import { ShoppingCartIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import Link from "next/link";
-import { Fragment, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { useFormStatus } from "react-dom";
 import { createCartAndSetCookie, redirectToCheckout } from "./actions";
 import { useCart } from "./cart-context";
@@ -16,14 +23,79 @@ import { DeleteItemButton } from "../delete-item-button";
 import { EditItemQuantityButton } from "../edit-item-quantity-button";
 import OpenCart from "./open-cart";
 import { createUrl } from "@/app/lib/utils";
+import { useRouter } from "next/navigation";
 
 type MerchandiseSearchParams = {
   [key: string]: string;
 };
 
-export default function CartModal() {
+export interface CartModalRef {
+  openCart: () => void;
+  closeCart: () => void;
+}
+
+const CloseCart = ({ className }: { className?: string }) => (
+  <div className="relative flex h-11 w-11 items-center justify-center rounded-md border border-neutral-200 text-black transition-colors dark:border-neutral-700 dark:text-white">
+    <XMarkIcon
+      className={clsx(
+        "h-6 transition-all ease-in-out hover:scale-110",
+        className
+      )}
+    />
+  </div>
+);
+
+const CheckoutButton = ({ disabled = false }: { disabled?: boolean }) => {
+  const [isPending, setIsPending] = useState(false);
+  const router = useRouter();
+  const { cart } = useCart();
+
+  const handleCheckout = async () => {
+    if (!cart || !cart.items || cart.items.length === 0) {
+      console.error("Cannot proceed to checkout: Cart is empty");
+      return;
+    }
+
+    setIsPending(true);
+    try {
+      // Store cart in session storage for the checkout page
+      sessionStorage.setItem("checkoutCart", JSON.stringify(cart));
+      // Navigate to checkout page
+      router.push("/checkout");
+    } catch (error) {
+      console.error("Error during checkout:", error);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  const isDisabled = disabled || isPending || !cart?.items?.length;
+
+  return (
+    <button
+      onClick={handleCheckout}
+      disabled={isDisabled}
+      className="block w-full rounded-full bg-blue-600 p-3 text-center text-sm font-medium text-white opacity-90 hover:opacity-100 disabled:opacity-50"
+    >
+      {isPending ? <LoadingDots className="bg-white" /> : "Proceed to Checkout"}
+    </button>
+  );
+};
+
+const CartModal = forwardRef<CartModalRef>((_props, ref) => {
   const { cart, updateCartItem } = useCart();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Debug cart state
+  useEffect(() => {
+    console.log("🛒 Cart state changed:", {
+      hasCart: !!cart,
+      cartItems: cart?.items,
+      itemsLength: cart?.items?.length,
+      totalQuantity: cart?.totalQuantity,
+      cart: cart,
+    });
+  }, [cart]);
   const totalQuantity =
     cart?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const quantityRef = useRef(totalQuantity);
@@ -32,22 +104,27 @@ export default function CartModal() {
 
   useEffect(() => {
     if (!cart) {
+      console.log("🛒 No cart found → creating new cart...");
       createCartAndSetCookie();
+    } else {
+      console.log("🛒 Cart loaded:", cart);
     }
   }, [cart]);
 
+  // Removed auto-open functionality to prevent cart from opening on page load
+  // You can re-enable this if you want the cart to open when items are added
+  // while the cart is closed
   useEffect(() => {
-    if (
-      cart?.totalQuantity &&
-      cart?.totalQuantity !== quantityRef.current &&
-      cart?.totalQuantity > 0
-    ) {
-      if (!isOpen) {
-        setIsOpen(true);
-      }
-      quantityRef.current = cart?.totalQuantity;
+    if (cart?.totalQuantity) {
+      quantityRef.current = cart.totalQuantity;
     }
-  }, [isOpen, cart?.totalQuantity, quantityRef]);
+  }, [cart?.totalQuantity]);
+
+  // Expose open/close methods to parent components
+  useImperativeHandle(ref, () => ({
+    openCart,
+    closeCart,
+  }));
 
   return (
     <>
@@ -84,7 +161,9 @@ export default function CartModal() {
                 </button>
               </div>
 
-              {!cart || cart.items.length === 0 ? (
+              {!cart ||
+              !Array.isArray(cart.items) ||
+              cart.items.length === 0 ? (
                 <div className="mt-20 flex w-full flex-col items-center justify-center overflow-hidden">
                   <ShoppingCartIcon className="h-16" />
                   <p className="mt-6 text-center text-2xl font-bold">
@@ -95,28 +174,82 @@ export default function CartModal() {
                 <div className="flex h-full flex-col justify-between overflow-hidden p-1">
                   <ul className="grow overflow-auto py-4">
                     {cart.items
-                      .sort((a, b) =>
-                        a.product.title.localeCompare(b.product.title)
+                      .filter((item) => item?.product) // Filter out any null/undefined items
+                      .sort(
+                        (a, b) =>
+                          a.product?.title?.localeCompare(
+                            b.product?.title || ""
+                          ) || 0
                       )
                       .map((item, i) => {
+                        if (!item) {
+                          console.warn("Undefined item in cart at index", i);
+                          return null;
+                        }
+                        console.log(`🛍️ Rendering cart item [${i}]`, item);
+
                         const merchandiseSearchParams =
                           {} as MerchandiseSearchParams;
 
-                        item.variant.selectedOptions?.forEach(
-                          ({ name, value }) => {
-                            merchandiseSearchParams[name.toLowerCase()] = value;
-                          }
-                        );
+                        if (item.variant?.selectedOptions) {
+                          item.variant.selectedOptions.forEach(
+                            ({ name, value }) => {
+                              if (name && value) {
+                                merchandiseSearchParams[name.toLowerCase()] =
+                                  value;
+                              }
+                            }
+                          );
+                        }
 
                         const productUrl = createUrl(
-                          `/product/${item.product.handle}`,
+                          `/product/${item.product?.handle || ""}`,
                           new URLSearchParams(merchandiseSearchParams)
                         );
 
                         // Get variant options (color, size, etc.)
-                        const variantOptions = item.variant.selectedOptions
-                          ?.map((option) => `${option.name}: ${option.value}`)
+                        const variantOptions = item.variant?.selectedOptions
+                          ?.filter(
+                            (option) => option && option.name && option.value
+                          )
+                          ?.map((option) => {
+                            // For size options that contain slashes, only show the selected size
+                            if (
+                              (option.name.toLowerCase() === "size" ||
+                                option.name.toLowerCase() === "sizes") &&
+                              option.value.includes("/")
+                            ) {
+                              // If we have a selected size in the variant, use that
+                              const selectedSize =
+                                item.variant.selectedOptions?.find(
+                                  (opt) =>
+                                    opt.name.toLowerCase() ===
+                                    option.name.toLowerCase()
+                                )?.value;
+                              return `${option.name}: ${
+                                selectedSize ||
+                                option.value.split("/")[0].trim()
+                              }`;
+                            }
+                            return `${option.name}: ${option.value}`;
+                          })
                           .join(" / ");
+
+                        console.log("🔎 Item details:", {
+                          title: item.product?.title || "No title",
+                          url: productUrl,
+                          options: variantOptions || "No options",
+                          quantity: item.quantity || 0,
+                          price: item.price || {
+                            amount: 0,
+                            currencyCode: "USD",
+                          },
+                        });
+
+                        if (!item.product) {
+                          console.error("Item is missing product data:", item);
+                          return null;
+                        }
 
                         return (
                           <li
@@ -205,8 +338,10 @@ export default function CartModal() {
                       <p>Taxes</p>
                       <Price
                         className="text-right text-base text-black dark:text-white"
-                        amount={cart.cost.totalTaxAmount.amount}
-                        currencyCode={cart.cost.totalTaxAmount.currencyCode}
+                        amount={cart.cost?.totalTaxAmount?.amount || "0"}
+                        currencyCode={
+                          cart.cost?.totalTaxAmount?.currencyCode || "USD"
+                        }
                       />
                     </div>
                     <div className="mb-3 flex items-center justify-between border-b border-neutral-200 pb-1 pt-1 dark:border-neutral-700">
@@ -217,14 +352,20 @@ export default function CartModal() {
                       <p className="font-semibold">Total</p>
                       <Price
                         className="text-right text-base font-semibold text-black dark:text-white"
-                        amount={cart.cost.totalAmount.amount}
-                        currencyCode={cart.cost.totalAmount.currencyCode}
+                        amount={
+                          cart.cost?.totalAmount?.amount || cart.total || "0"
+                        }
+                        currencyCode={
+                          cart.cost?.totalAmount?.currencyCode ||
+                          cart.items[0]?.price.currencyCode ||
+                          "USD"
+                        }
                       />
                     </div>
                   </div>
-                  <form action={redirectToCheckout}>
+                  <div className="mt-6">
                     <CheckoutButton />
-                  </form>
+                  </div>
                 </div>
               )}
             </Dialog.Panel>
@@ -233,31 +374,8 @@ export default function CartModal() {
       </Transition>
     </>
   );
-}
+});
 
-function CloseCart({ className }: { className?: string }) {
-  return (
-    <div className="relative flex h-11 w-11 items-center justify-center rounded-md border border-neutral-200 text-black transition-colors dark:border-neutral-700 dark:text-white">
-      <XMarkIcon
-        className={clsx(
-          "h-6 transition-all ease-in-out hover:scale-110",
-          className
-        )}
-      />
-    </div>
-  );
-}
+CartModal.displayName = "CartModal";
 
-function CheckoutButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      className="block w-full rounded-full bg-blue-600 p-3 text-center text-sm font-medium text-white opacity-90 hover:opacity-100"
-      type="submit"
-      disabled={pending}
-    >
-      {pending ? <LoadingDots className="bg-white" /> : "Proceed to Checkout"}
-    </button>
-  );
-}
+export default CartModal;

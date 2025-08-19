@@ -78,40 +78,45 @@ export default function ProductsHomePage() {
   const router = useRouter();
 
   const handleDeleteProduct = async (productId: string) => {
-    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this product? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
     try {
-      setIsDeleting(prev => ({ ...prev, [productId]: true }));
-      
+      setIsDeleting((prev) => ({ ...prev, [productId]: true }));
+
       const response = await fetch(`/api/products`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id: productId })
+        body: JSON.stringify({ id: productId }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete product');
+        throw new Error("Failed to delete product");
       }
 
       // Remove the deleted product from the list
-      setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
-      
+      setProducts((prevProducts) =>
+        prevProducts.filter((p) => p.id !== productId)
+      );
+
       // Close the expanded row if it was open
-      setExpandedRows(prev => {
+      setExpandedRows((prev) => {
         const newExpanded = { ...prev };
         delete newExpanded[productId];
         return newExpanded;
       });
-
     } catch (error) {
-      console.error('Error deleting product:', error);
-      alert('Failed to delete product. Please try again.');
+      console.error("Error deleting product:", error);
+      alert("Failed to delete product. Please try again.");
     } finally {
-      setIsDeleting(prev => ({ ...prev, [productId]: false }));
+      setIsDeleting((prev) => ({ ...prev, [productId]: false }));
     }
   };
 
@@ -124,7 +129,6 @@ export default function ProductsHomePage() {
           throw new Error("Failed to fetch products");
         }
         const data = await response.json();
-        console.log("----------------", data);
         setProducts(data);
         setError(null);
       } catch (err) {
@@ -373,7 +377,7 @@ export default function ProductsHomePage() {
                           {new Intl.NumberFormat("en-US", {
                             style: "currency",
                             currency: product.price_currency || "USD",
-                          }).format(product.min_price_amount / 100)}
+                          }).format(product.min_price_amount)}
                           {product.min_price_amount !==
                             product.max_price_amount && (
                             <span>
@@ -382,7 +386,7 @@ export default function ProductsHomePage() {
                               {new Intl.NumberFormat("en-US", {
                                 style: "currency",
                                 currency: product.price_currency || "USD",
-                              }).format(product.max_price_amount / 100)}
+                              }).format(product.max_price_amount)}
                             </span>
                           )}
                         </td>
@@ -404,13 +408,17 @@ export default function ProductsHomePage() {
                             >
                               <FiEdit2 className="h-5 w-5" />
                             </Link>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteProduct(product.id);
                               }}
                               disabled={isDeleting[product.id]}
-                              className={`text-red-600 hover:text-red-900 ${isDeleting[product.id] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              className={`text-red-600 hover:text-red-900 ${
+                                isDeleting[product.id]
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                              }`}
                               title="Delete product"
                             >
                               <FiTrash2 className="h-5 w-5" />
@@ -422,6 +430,7 @@ export default function ProductsHomePage() {
                         <tr>
                           <td colSpan={5} className="px-6 py-4 bg-gray-50">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {/* Description */}
                               <div>
                                 <h3 className="text-sm font-medium text-gray-500">
                                   Description
@@ -431,18 +440,20 @@ export default function ProductsHomePage() {
                                     "No description available"}
                                 </p>
                               </div>
+
+                              {/* Collections */}
                               <div>
                                 <h3 className="text-sm font-medium text-gray-500">
                                   Collections
                                 </h3>
                                 <div className="mt-1 flex flex-wrap gap-1">
-                                  {product.collections?.length > 0 ? (
-                                    product.collections.map((collection) => (
+                                  {product.collections?.length ? (
+                                    product.collections.map((c) => (
                                       <span
-                                        key={collection}
+                                        key={c}
                                         className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                                       >
-                                        {collection}
+                                        {c}
                                       </span>
                                     ))
                                   ) : (
@@ -452,6 +463,8 @@ export default function ProductsHomePage() {
                                   )}
                                 </div>
                               </div>
+
+                              {/* Variants */}
                               <div className="md:col-span-2">
                                 <h3 className="text-sm font-medium text-gray-500 mb-2">
                                   Variants
@@ -460,50 +473,39 @@ export default function ProductsHomePage() {
                                   <table className="min-w-full divide-y divide-gray-300">
                                     <thead className="bg-gray-50">
                                       <tr>
-                                        <th
-                                          scope="col"
-                                          className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
-                                        >
+                                        <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
                                           Name
                                         </th>
-                                        <th
-                                          scope="col"
-                                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                                        >
+                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                                           Options
                                         </th>
-                                        <th
-                                          scope="col"
-                                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                                        >
+                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                                           Price
                                         </th>
-                                        <th
-                                          scope="col"
-                                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                                        >
+                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                                           Stock
                                         </th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200 bg-white">
-                                      {product.variants?.length > 0 ? (
+                                      {product.variants?.length ? (
                                         product.variants.map((variant) => (
                                           <tr key={variant.id}>
                                             <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
                                               {variant.name}
                                             </td>
                                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                              {Object.entries(
-                                                variant.options || {}
-                                              ).map(([key, value]) => (
-                                                <div key={key}>
-                                                  <span className="font-medium">
-                                                    {key}:
-                                                  </span>{" "}
-                                                  {value}
-                                                </div>
-                                              ))}
+                                              {Array.isArray(variant.options) &&
+                                                variant.options.map(
+                                                  (opt, idx) => (
+                                                    <div key={idx}>
+                                                      <span className="font-medium">
+                                                        {opt.name}:
+                                                      </span>{" "}
+                                                      {opt.value}
+                                                    </div>
+                                                  )
+                                                )}
                                             </td>
                                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                               {new Intl.NumberFormat("en-US", {
@@ -511,7 +513,7 @@ export default function ProductsHomePage() {
                                                 currency:
                                                   product.price_currency ||
                                                   "USD",
-                                              }).format(variant.price / 100)}
+                                              }).format(variant.price)}
                                             </td>
                                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                               {variant.stock}
@@ -532,22 +534,22 @@ export default function ProductsHomePage() {
                                   </table>
                                 </div>
                               </div>
+
+                              {/* Images */}
                               <div className="md:col-span-2">
                                 <h3 className="text-sm font-medium text-gray-500 mb-2">
                                   Images
                                 </h3>
                                 <div className="flex flex-wrap gap-2">
-                                  {product.images?.length > 0 ? (
-                                    product.images.map((image, index) => (
+                                  {product.images?.length ? (
+                                    product.images.map((img, idx) => (
                                       <div
-                                        key={index}
-                                        className="relative h-20 w-20 rounded-md overflow-hidden border border-gray-200"
+                                        key={idx}
+                                        className="h-20 w-20 rounded-md overflow-hidden border"
                                       >
                                         <img
-                                          src={image.url}
-                                          alt={`${product.title} - ${
-                                            index + 1
-                                          }`}
+                                          src={img.url}
+                                          alt={img.altText}
                                           className="h-full w-full object-cover"
                                         />
                                       </div>
@@ -559,6 +561,8 @@ export default function ProductsHomePage() {
                                   )}
                                 </div>
                               </div>
+
+                              {/* Actions */}
                               <div className="md:col-span-2 flex justify-between items-center pt-4 border-t border-gray-200">
                                 <div className="text-sm text-gray-500">
                                   <p>
@@ -579,7 +583,7 @@ export default function ProductsHomePage() {
                                 <div className="flex space-x-3">
                                   <Link
                                     href={`/admin/seed-products/edit/${product.id}`}
-                                    className="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                    className="inline-flex items-center rounded-md bg-blue-600 text-white px-3 py-2 text-sm"
                                   >
                                     <FiEdit2 className="-ml-1 mr-2 h-4 w-4" />
                                     Edit Product
@@ -587,7 +591,7 @@ export default function ProductsHomePage() {
                                   <Link
                                     href={`/products/${product.handle}`}
                                     target="_blank"
-                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                    className="inline-flex items-center rounded-md border px-3 py-2 text-sm"
                                   >
                                     <FiEye className="-ml-1 mr-2 h-4 w-4" />
                                     View in Store

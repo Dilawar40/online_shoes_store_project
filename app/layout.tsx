@@ -29,25 +29,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   // Initialize cart with proper structure for static data
-  const cart = Promise.resolve({
-    items: [],
-    totalQuantity: 0,
-    total: 0,
-    cost: {
-      totalAmount: {
-        amount: 0,
-        currencyCode: 'PKR'
-      },
-      totalTaxAmount: {
-        amount: 0,
-        currencyCode: 'PKR'
-      }
-    }
-  });
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="bg-neutral-50 text-black dark:bg-neutral-900">
-        <CartProvider cartPromise={cart}>
+        <CartProvider>
           <Navbar />
           <main>{children}</main>
         </CartProvider>
