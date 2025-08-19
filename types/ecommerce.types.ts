@@ -1,256 +1,91 @@
-// Generic E-commerce Types
-export type Maybe<T> = T | null;
+// types.ts
 
-export type Connection<T> = {
-  edges: Array<Edge<T>>;
-  pageInfo?: {
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
-};
-
-export type Edge<T> = {
-  node: T;
-  cursor?: string;
-};
-
-export type Cart = {
+export interface CartItem {
   id: string;
-  checkoutUrl: string;
-  cost: {
-    subtotalAmount: Money;
-    totalAmount: Money;
-    totalTaxAmount: Money;
-  };
-  lines: CartItem[];
-  totalQuantity: number;
-};
-
-export type Product = {
-  id: string;
-  handle: string;
-  availableForSale: boolean;
-  title: string;
-  description: string;
-  descriptionHtml: string;
-  options: ProductOption[];
-  priceRange: {
-    maxVariantPrice: Money;
-    minVariantPrice: Money;
-  };
-  variants: ProductVariant[];
-  featuredImage: Image;
-  images: Image[];
-  seo: SEO;
-  tags: string[];
-  updatedAt: string;
-};
-
-export type CartItem = {
-  id: string;
+  product: Product;
+  variant: ProductVariant;
   quantity: number;
-  price: {
-    amount: number;
+  // Add any other cart item specific fields you need
+}
+
+export interface ProductOption {
+  id: string;
+  name: string;
+  values: string[];
+}
+
+export interface Price {
+  amount: number;
+  currencyCode: string;
+}
+
+export interface PriceRange {
+  minVariantPrice: Price;
+  maxVariantPrice: Price;
+}
+
+export interface ProductVariant {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+  options: Array<{
+    name: string;
+    value: string;
+  }>;
+  // Transformed fields
+  priceObject?: {
+    amount: string;
     currencyCode: string;
   };
-  variant: ProductVariant;
-  product: Product; // This should contain all product data
-  cost?: {
-    totalAmount: {
-      amount: number;
-      currencyCode: string;
-    };
+  compareAtPrice?: {
+    amount: string;
+    currencyCode: string;
   };
-  merchandise?: any;
-};
-export type Collection = {
+  // For backward compatibility
+  availableForSale?: boolean;
+  selectedOptions?: Array<{
+    name: string;
+    value: string;
+  }>;
+  inventoryQuantity?: number;
+  featuredImage?: {
+    url: string;
+    altText?: string;
+    width?: number;
+    height?: number;
+  };
+  image?: {
+    url: string;
+    altText?: string;
+    width?: number;
+    height?: number;
+  };
+}
+
+export interface Product {
   id: string;
   handle: string;
   title: string;
   description: string;
-  seo: SEO;
-  updatedAt: string;
-  path: string;
-  products?: Connection<Product>;
-};
-
-export type Image = {
-  url: string;
-  altText: string;
-  width: number;
-  height: number;
-};
-
-export type Menu = {
-  title: string;
-  path: string;
-  items?: MenuItem[];
-};
-
-export type MenuItem = {
-  title: string;
-  url: string;
-};
-
-export type Money = {
-  amount: string;
-  currencyCode: string;
-};
-
-export type Page = {
-  id: string;
-  title: string;
-  handle: string;
-  body: string;
-  bodySummary: string;
-  seo?: SEO;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ProductOption = {
-  id: string;
-  name: string;
-  values: string[];
-};
-
-export type ProductVariant = {
-  id: string;
-  title: string;
-  availableForSale: boolean;
-  selectedOptions: {
-    name: string;
-    value: string;
+  price: Price;
+  priceRange: PriceRange;
+  featuredImage?: {
+    url: string;
+    altText?: string;
+  };
+  images?: {
+    url: string;
+    altText?: string;
   }[];
-  price: Money;
-  compareAtPrice?: Money;
-  sku?: string;
-  image?: Image;
-};
-
-export type SEO = {
-  title: string;
-  description: string;
-};
-
-// API Operation Types
-export type CartOperation = {
-  data: { cart: Cart };
-  variables: { cartId: string };
-};
-
-export type CreateCartOperation = {
-  data: { cartCreate: { cart: Cart } };
-};
-
-export type AddToCartOperation = {
-  data: { cartLinesAdd: { cart: Cart } };
-  variables: {
-    cartId: string;
-    lines: {
-      merchandiseId: string;
-      quantity: number;
-    }[];
-  };
-};
-
-export type RemoveFromCartOperation = {
-  data: { cartLinesRemove: { cart: Cart } };
-  variables: {
-    cartId: string;
-    lineIds: string[];
-  };
-};
-
-export type UpdateCartOperation = {
-  data: { cartLinesUpdate: { cart: Cart } };
-  variables: {
-    cartId: string;
-    lines: {
-      id: string;
-      quantity: number;
-    }[];
-  };
-};
-
-export type CollectionOperation = {
-  data: { collection: Collection };
-  variables: { handle: string };
-};
-
-export type CollectionProductsOperation = {
-  data: { collection: { products: Connection<Product> } };
-  variables: {
-    handle: string;
-    reverse?: boolean;
-    sortKey?: string;
-    first?: number;
-    after?: string;
-  };
-};
-
-export type CollectionsOperation = {
-  data: { collections: Connection<Collection> };
-  variables?: {
-    first?: number;
-    after?: string;
-  };
-};
-
-export type MenuOperation = {
-  data: { menu?: { items: MenuItem[] } };
-  variables: { handle: string };
-};
-
-export type PageOperation = {
-  data: { page: Page };
-  variables: { handle: string };
-};
-
-export type PagesOperation = {
-  data: { pages: Connection<Page> };
-  variables?: {
-    first?: number;
-    after?: string;
-  };
-};
-
-export type ProductOperation = {
-  data: { product: Product };
-  variables: { handle: string };
-};
-
-export type ProductRecommendationsOperation = {
-  data: { productRecommendations: Product[] };
-  variables: { productId: string };
-};
-
-export type ProductsOperation = {
-  data: { products: Connection<Product> };
-  variables?: {
-    query?: string;
-    reverse?: boolean;
-    sortKey?: string;
-    first?: number;
-    after?: string;
-  };
-};
-
-// Helper types for UI
-export type SelectedOptions = Record<string, string>;
-
-export type Combination = {
-  id: string;
-  availableForSale: boolean;
-  selectedOptions: {
+  options?: Array<{
+    id: string;
     name: string;
-    value: string;
-  }[];
-  price: Money;
-  compareAtPrice?: Money;
-};
-
-export type Option = {
-  name: string;
-  values: string[];
-};
+    values: string[];
+  }>;
+  variants: ProductVariant[]; // Array of product variants
+  collections?: any[]; // For backward compatibility
+  inventory?: {
+    total: number;
+  };
+}

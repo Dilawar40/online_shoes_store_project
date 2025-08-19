@@ -45,7 +45,12 @@ export async function addItem(
         minVariantPrice: { amount: 0, currencyCode: 'PKR' },
         maxVariantPrice: { amount: 0, currencyCode: 'PKR' }
       },
-      featuredImage: { url: '', altText: 'Sample product' },
+      featuredImage: { 
+        url: '', 
+        altText: 'Sample product',
+        width: 800,
+        height: 800
+      },
       images: [],
       options: [],
       variants: [],
@@ -167,8 +172,39 @@ export async function updateItemQuantity(
 }
 
 export async function redirectToCheckout() {
-  if (!cart) {
-    throw new Error('Cannot proceed to checkout: Cart is empty');
+  // Get the cart from localStorage for unauthenticated users
+  let cart: any = null;
+  if (typeof window !== 'undefined') {
+    const cartData = localStorage.getItem('localCart');
+    if (cartData) {
+      cart = JSON.parse(cartData);
+    }
+  }
+
+  // Log the current cart state for debugging
+  console.log('🛒 Current cart state:', cart);
+  
+  if (!cart || !cart.items || cart.items.length === 0) {
+    console.error('Cannot proceed to checkout: Cart is empty');
+    return { error: 'Your cart is empty. Please add items before checking out.' };
+  }
+  
+  // Log the cart items to console
+  console.log('🛒 Cart items being checked out:');
+  cart.items.forEach((item: any, index: number) => {
+    if (!item) return;
+    console.log(`Item ${index + 1}:`, {
+      id: item.id,
+      product: item.product?.title || 'Unknown Product',
+      variantId: item.variant?.id,
+      quantity: item.quantity,
+      price: item.price || { amount: 0, currencyCode: 'PKR' },
+    });
+  });
+  
+  // Store cart in session storage for the checkout page
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('checkoutCart', JSON.stringify(cart));
   }
   
   // This will redirect the user to the checkout page

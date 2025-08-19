@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { useProduct } from "../product/product-context";
 import { Product } from "@/app/lib/constants";
 import { useCart } from "./cart-context";
+import { useRouter } from "next/navigation";
 
 interface SubmitButtonProps {
   availableForSale: boolean;
@@ -21,7 +22,12 @@ function SubmitButton({
     "relative flex w-full items-center justify-center rounded-full bg-blue-600 p-4 tracking-wide text-white";
   const disabledClasses = "cursor-not-allowed opacity-60 hover:opacity-60";
 
+  console.log("🔹 SubmitButton Rendered");
+  console.log("   availableForSale:", availableForSale);
+  console.log("   isDisabled:", isDisabled);
+
   if (!availableForSale) {
+    console.log("⚠️ Product not available for sale → button disabled");
     return (
       <button
         type="button"
@@ -33,6 +39,14 @@ function SubmitButton({
     );
   }
 
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    console.log("✅ Add To Cart clicked!");
+    console.log("   Disabled:", isDisabled);
+    if (onClick) {
+      onClick(e);
+    }
+  };
+
   return (
     <button
       type="submit"
@@ -40,7 +54,7 @@ function SubmitButton({
         [disabledClasses]: isDisabled,
       })}
       disabled={isDisabled}
-      onClick={onClick}
+      onClick={handleClick}
     >
       <PlusIcon className="mr-2 h-5" />
       Add To Cart
@@ -48,10 +62,16 @@ function SubmitButton({
   );
 }
 
-export function AddToCart({ product }: { product: Product }) {
+interface AddToCartProps {
+  product: Product;
+  onAddToCart?: () => void;
+}
+
+export function AddToCart({ product, onAddToCart }: AddToCartProps) {
   const { variants } = product;
   const { addCartItem } = useCart();
   const { state } = useProduct();
+  const router = useRouter();
 
   // Check if all required options are selected
   const areAllOptionsSelected = () => {
@@ -89,21 +109,45 @@ export function AddToCart({ product }: { product: Product }) {
   const availableForSale = (finalVariant?.inventoryQuantity ?? 0) > 0;
   const allOptionsSelected = areAllOptionsSelected();
 
-  const handleAddToCart = (e: React.FormEvent) => {
+  const handleAddToCart = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log("handleAddToCart called");
+    console.log("finalVariant:", finalVariant);
+    console.log("allOptionsSelected:", allOptionsSelected);
+    console.log("Current state:", state);
+
     if (!finalVariant || !allOptionsSelected) {
-      console.error("Please select all required options");
+      console.error(
+        "Cannot add to cart: ",
+        !finalVariant ? "No variant selected" : "Not all options selected"
+      );
       return;
     }
 
+    // Create a clean variant with only the selected options
+    const cleanSelectedOptions = finalVariant.selectedOptions?.map(option => {
+      // If this is a size option and contains slashes, use the selected size from state
+      if ((option.name.toLowerCase() === 'size' || option.name.toLowerCase() === 'sizes') && option.value.includes('/')) {
+        const selectedSize = state[option.name.toLowerCase()];
+        return {
+          ...option,
+          value: selectedSize || option.value.split('/')[0].trim() // Fallback to first size if none selected
+        };
+      }
+      return option;
+    });
+
     const variantWithCorrectPrice = {
       ...finalVariant,
+      selectedOptions: cleanSelectedOptions,
       price: {
         amount: Number(finalVariant.price.amount),
         currencyCode: finalVariant.price.currencyCode || "PKR",
       },
     };
+
+    console.log("Variant with price and clean options:", variantWithCorrectPrice);
 
     const productForCart = {
       ...product,
@@ -115,7 +159,21 @@ export function AddToCart({ product }: { product: Product }) {
       options: product.options,
     };
 
-    addCartItem(variantWithCorrectPrice, productForCart);
+    console.log("Adding to cart:", {
+      variant: variantWithCorrectPrice,
+      product: productForCart,
+    });
+
+    try {
+      await addCartItem(variantWithCorrectPrice, productForCart);
+      console.log("Successfully added to cart");
+      // Call the onAddToCart callback if provided
+      if (onAddToCart) {
+        onAddToCart();
+      }
+    } catch (error) {
+      console.error("Error in handleAddToCart:", error);
+    }
   };
 
   return (

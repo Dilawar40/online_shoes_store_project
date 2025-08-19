@@ -60,12 +60,10 @@ export default function HeroSlidesPage() {
         throw new Error(err.error || "Failed to delete");
       }
 
-      console.log("Deleted", await res.json());
 
       // Refresh slides after delete
       await fetchSlides();
     } catch (err) {
-      console.log(err);
       setError("Could not delete slide.");
     } finally {
       setIsSubmitting(false);
