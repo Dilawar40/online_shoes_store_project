@@ -31,7 +31,6 @@ async function fetchHeroSlides() {
     console.error("Error fetching hero slides:", error);
     return [];
   }
-  console.log("Hero slides:", data);
   return data;
 }
 

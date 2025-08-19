@@ -17,7 +17,7 @@ export default function AdminPage() {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        console.log("------------------- Session:", session);
+
         setIsLoggedIn(true);
         if (!session) {
           // Redirect to login page if not authenticated
@@ -48,8 +48,8 @@ export default function AdminPage() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
       <div className="mb-8">
-        <a 
-          href="/admin/test-upload" 
+        <a
+          href="/admin/test-upload"
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
         >
           Go to Test Upload
