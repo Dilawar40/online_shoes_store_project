@@ -1,6 +1,8 @@
 "use client";
 
 import clsx from "clsx";
+
+import Script from "next/script";
 import { Dialog, Transition } from "@headlessui/react";
 import { ShoppingCartIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
@@ -45,42 +47,99 @@ const CloseCart = ({ className }: { className?: string }) => (
   </div>
 );
 
-const CheckoutButton = ({ disabled = false }: { disabled?: boolean }) => {
-  const [isPending, setIsPending] = useState(false);
-  const router = useRouter();
-  const { cart } = useCart();
+const CheckoutButton = () => {
+  const [loading, setLoading] = useState(false);
 
   const handleCheckout = async () => {
-    if (!cart || !cart.items || cart.items.length === 0) {
-      console.error("Cannot proceed to checkout: Cart is empty");
-      return;
-    }
-
-    setIsPending(true);
+    setLoading(true);
     try {
-      // Store cart in session storage for the checkout page
-      sessionStorage.setItem("checkoutCart", JSON.stringify(cart));
-      // Navigate to checkout page
-      router.push("/checkout");
-    } catch (error) {
-      console.error("Error during checkout:", error);
+      const res = await fetch("http://127.0.0.1:8000/api/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 1000 }), // paisa
+      });
+
+      const data = await res.json();
+      console.log("Safepay Checkout Response:", data);
+
+      // Laravel jaisa hosted checkout redirect
+      if (data?.redirect) {
+        window.location.href = data.redirect;
+      } else {
+        console.error("Redirect URL not found", data);
+      }
+    } catch (err) {
+      console.error("Checkout Error", err);
     } finally {
-      setIsPending(false);
+      setLoading(false);
     }
   };
-
-  const isDisabled = disabled || isPending || !cart?.items?.length;
 
   return (
     <button
       onClick={handleCheckout}
-      disabled={isDisabled}
-      className="block w-full rounded-full bg-blue-600 p-3 text-center text-sm font-medium text-white opacity-90 hover:opacity-100 disabled:opacity-50"
+      disabled={loading}
+      className="bg-blue-600 text-white px-4 py-2 rounded"
     >
-      {isPending ? <LoadingDots className="bg-white" /> : "Proceed to Checkout"}
+      {loading ? "Processing..." : "Proceed to Payment"}
     </button>
   );
 };
+
+
+
+// const CheckoutButton = ({ disabled = false }: { disabled?: boolean }) => {
+//   const [isPending, setIsPending] = useState(false);
+//   const router = useRouter();
+//   const { cart } = useCart();
+
+//   const handleCheckout = async () => {
+//     if (!cart || !cart.items || cart.items.length === 0) {
+//       console.error("Cannot proceed to checkout: Cart is empty");
+//       return;
+//     }
+
+//     setIsPending(true);
+//     const testAmount = 500;
+//     try {
+//       const orderId = `order_${Date.now()}`;
+//       const amount = testAmount;
+
+//       // Call Next.js API
+//       const res = await fetch("/api/payments", {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ orderId, amount }),
+//       });
+
+//       const data = await res.json();
+//       console.log("Safepay response:", data);
+
+//       if (data.data?.token) {
+//         // Redirect to Safepay Checkout page
+//         window.location.href = `https://sandbox.api.getsafepay.com/checkout?token=${data.data.token}`;
+//       } else {
+//         console.error("Checkout failed:", data);
+//       }
+//     } catch (error) {
+//       console.error("Error during checkout:", error);
+//     } finally {
+//       setIsPending(false);
+//     }
+//   };
+
+//   const isDisabled = disabled || isPending || !cart?.items?.length;
+
+//   return (
+//     <button
+//       onClick={handleCheckout}
+//       disabled={isDisabled}
+//       className="block w-full rounded-full bg-blue-600 p-3 text-center text-sm font-medium text-white opacity-90 hover:opacity-100 disabled:opacity-50"
+//     >
+//       {isPending ? <LoadingDots className="bg-white" /> : "Proceed to Checkout"}
+//     </button>
+//   );
+// };
 
 const CartModal = forwardRef<CartModalRef>((_props, ref) => {
   const { cart, updateCartItem } = useCart();
@@ -162,8 +221,8 @@ const CartModal = forwardRef<CartModalRef>((_props, ref) => {
               </div>
 
               {!cart ||
-              !Array.isArray(cart.items) ||
-              cart.items.length === 0 ? (
+                !Array.isArray(cart.items) ||
+                cart.items.length === 0 ? (
                 <div className="mt-20 flex w-full flex-col items-center justify-center overflow-hidden">
                   <ShoppingCartIcon className="h-16" />
                   <p className="mt-6 text-center text-2xl font-bold">
@@ -226,10 +285,9 @@ const CartModal = forwardRef<CartModalRef>((_props, ref) => {
                                     opt.name.toLowerCase() ===
                                     option.name.toLowerCase()
                                 )?.value;
-                              return `${option.name}: ${
-                                selectedSize ||
+                              return `${option.name}: ${selectedSize ||
                                 option.value.split("/")[0].trim()
-                              }`;
+                                }`;
                             }
                             return `${option.name}: ${option.value}`;
                           })
