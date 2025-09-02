@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 /* ------------------------------------------------------------------ */
@@ -26,6 +26,105 @@ export type Product = {
 };
 
 /* ------------------------------------------------------------------ */
+/* 1.1 Mobile-only rotating image component                            */
+/* ------------------------------------------------------------------ */
+function RotatingImage({
+  product,
+  staticSrc,
+}: {
+  product: Product;
+  staticSrc: string;
+}) {
+  // Build gallery from product images with fallback
+  const gallery = useMemo(() => {
+    const urls = product.images?.map((img) => img.url).filter(Boolean) || [];
+    if (!urls.length && product.featuredImage?.url) urls.push(product.featuredImage.url);
+    if (!urls.length) urls.push("/placeholder.jpg");
+    return urls;
+  }, [product.images, product.featuredImage]);
+
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const mqlRef = useRef<MediaQueryList | null>(null);
+
+  // Reset index when gallery changes
+  useEffect(() => {
+    setCurrentIdx(0);
+  }, [gallery.length]);
+
+  // Start/stop rotation based on visibility and mobile breakpoint
+  useEffect(() => {
+    if (!containerRef.current) return;
+    if (gallery.length <= 1) return;
+
+    const mql = window.matchMedia("(max-width: 640px)");
+    mqlRef.current = mql;
+
+    const clearTicker = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+
+    const startTicker = () => {
+      if (intervalRef.current || gallery.length <= 1) return;
+      intervalRef.current = setInterval(() => {
+        setCurrentIdx((i) => (i + 1) % gallery.length);
+      }, 2500);
+    };
+
+    const handleVisibility = (entries: IntersectionObserverEntry[]) => {
+      const entry = entries[0];
+      const halfVisible = entry.isIntersecting && entry.intersectionRatio >= 0.5;
+      if (mql.matches && halfVisible) startTicker();
+      else clearTicker();
+    };
+
+    if (observerRef.current) observerRef.current.disconnect();
+    observerRef.current = new IntersectionObserver(handleVisibility, {
+      threshold: [0, 0.25, 0.5, 0.75, 1],
+    });
+    observerRef.current.observe(containerRef.current);
+
+    const handleMqlChange = () => {
+      if (!mql.matches) clearTicker();
+      // retrigger observer callback by un/observe
+      if (observerRef.current && containerRef.current) {
+        observerRef.current.unobserve(containerRef.current);
+        observerRef.current.observe(containerRef.current);
+      }
+    };
+    mql.addEventListener?.("change", handleMqlChange);
+
+    return () => {
+      clearTicker();
+      mql.removeEventListener?.("change", handleMqlChange);
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+    };
+  }, [gallery.length]);
+
+  // Choose which src to render: rotate on mobile, static otherwise
+  const mobile = mqlRef.current?.matches ?? false;
+  const src = mobile ? gallery[currentIdx] : staticSrc;
+
+  return (
+    <div ref={containerRef} className="aspect-square bg-gray-200 relative">
+      <img
+        src={src}
+        alt={product.title}
+        className="object-cover w-full h-full group-hover:opacity-90"
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* 2. Client component                                                 */
 /* ------------------------------------------------------------------ */
 export default function SearchClient() {
@@ -43,7 +142,7 @@ export default function SearchClient() {
     async function fetchProducts() {
       try {
         setIsLoading(true);
-        const res = await fetch("/api/products");
+        const res = await fetch("/api/products?limit=40");
         if (!res.ok) throw new Error("Failed to fetch");
         const data: any[] = await res.json();
 
@@ -116,15 +215,34 @@ export default function SearchClient() {
               key={product.handle}
               href={`/product/${product.handle}`}
               className="group block h-full"
+              onMouseEnter={() => {
+                const hoverUrl =
+                  product.images[1]?.url ||
+                  product.featuredImage?.url ||
+                  product.images[0]?.url;
+                if (hoverUrl) {
+                  setActiveImages((prev) => ({
+                    ...prev,
+                    [product.handle]: hoverUrl,
+                  }));
+                }
+              }}
+              onMouseLeave={() => {
+                const defaultUrl =
+                  product.featuredImage?.url || product.images[0]?.url;
+                if (defaultUrl) {
+                  setActiveImages((prev) => ({
+                    ...prev,
+                    [product.handle]: defaultUrl,
+                  }));
+                }
+              }}
             >
               <div className="group relative bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow w-full h-full">
-                <div className="aspect-square bg-gray-200 relative">
-                  <img
-                    src={activeImages[product.handle] || product.images[0]?.url}
-                    alt={product.title}
-                    className="object-cover w-full h-full group-hover:opacity-90"
-                  />
-                </div>
+                <RotatingImage
+                  product={product}
+                  staticSrc={activeImages[product.handle] || product.images[0]?.url || "/placeholder.jpg"}
+                />
 
                 {/* thumbnails */}
                 <div className="flex items-center mt-2 space-x-1 overflow-x-auto pb-2">

@@ -6,6 +6,7 @@ import { useProduct } from "../product/product-context";
 import { Product } from "@/app/lib/constants";
 import { useCart } from "./cart-context";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 interface SubmitButtonProps {
   availableForSale: boolean;
@@ -72,6 +73,7 @@ export function AddToCart({ product, onAddToCart }: AddToCartProps) {
   const { addCartItem } = useCart();
   const { state } = useProduct();
   const router = useRouter();
+  const [quantity, setQuantity] = useState(1);
 
   // Check if all required options are selected
   const areAllOptionsSelected = () => {
@@ -108,6 +110,10 @@ export function AddToCart({ product, onAddToCart }: AddToCartProps) {
     variant || (variants.length === 1 ? variants[0] : undefined);
   const availableForSale = (finalVariant?.inventoryQuantity ?? 0) > 0;
   const allOptionsSelected = areAllOptionsSelected();
+  const maxQty = Math.max(1, finalVariant?.inventoryQuantity ?? 10);
+
+  const dec = () => setQuantity((q) => Math.max(1, q - 1));
+  const inc = () => setQuantity((q) => Math.min(maxQty, q + 1));
 
   const handleAddToCart = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,22 +131,23 @@ export function AddToCart({ product, onAddToCart }: AddToCartProps) {
       return;
     }
 
-    // Create a clean variant with only the selected options
-    const cleanSelectedOptions = finalVariant.selectedOptions?.map(option => {
-      // If this is a size option and contains slashes, use the selected size from state
-      if ((option.name.toLowerCase() === 'size' || option.name.toLowerCase() === 'sizes') && option.value.includes('/')) {
-        const selectedSize = state[option.name.toLowerCase()];
-        return {
-          ...option,
-          value: selectedSize || option.value.split('/')[0].trim() // Fallback to first size if none selected
-        };
-      }
-      return option;
-    });
+    // Build selected options from current state (ensures only the chosen values go into cart)
+    const selectedOptionsFromState = (product.options || [])
+      .map((opt) => {
+        const key = opt.name?.toLowerCase();
+        const val = key ? state[key] : undefined;
+        return val
+          ? ({ name: opt.name, value: String(val) } as { name: string; value: string })
+          : undefined;
+      })
+      .filter(Boolean) as Array<{ name: string; value: string }>;
 
     const variantWithCorrectPrice = {
       ...finalVariant,
-      selectedOptions: cleanSelectedOptions,
+      selectedOptions:
+        selectedOptionsFromState.length > 0
+          ? selectedOptionsFromState
+          : finalVariant.selectedOptions,
       price: {
         amount: Number(finalVariant.price.amount),
         currencyCode: finalVariant.price.currencyCode || "PKR",
@@ -165,19 +172,87 @@ export function AddToCart({ product, onAddToCart }: AddToCartProps) {
     });
 
     try {
-      await addCartItem(variantWithCorrectPrice, productForCart);
+      await addCartItem(variantWithCorrectPrice, productForCart, quantity);
       console.log("Successfully added to cart");
       // Call the onAddToCart callback if provided
       if (onAddToCart) {
         onAddToCart();
       }
+
+      // Open cart modal programmatically
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('open-cart'));
+
+        // Lightweight toast
+        const showToast = (msg: string) => {
+          const el = document.createElement('div');
+          el.textContent = msg;
+          el.className = 'fixed left-1/2 top-6 -translate-x-1/2 z-[100] rounded-md bg-green-600 px-4 py-2 text-white shadow-lg';
+          document.body.appendChild(el);
+          setTimeout(() => {
+            el.style.transition = 'opacity 300ms';
+            el.style.opacity = '0';
+            setTimeout(() => el.remove(), 300);
+          }, 1600);
+        };
+        showToast('Successfully added to cart');
+
+        // Navigate to home and auto-open cart there
+        sessionStorage.setItem('openCartOnHome', '1');
+      }
+
+      // Small delay so toast is visible before navigating
+      setTimeout(() => {
+        router.push('/');
+      }, 700);
     } catch (error) {
       console.error("Error in handleAddToCart:", error);
     }
   };
 
   return (
-    <form onSubmit={handleAddToCart}>
+    <form onSubmit={handleAddToCart} className="space-y-3">
+      {/* Quantity selector */}
+      <div>
+        <label className="mb-1 block text-xs tracking-wide text-neutral-600">Quantity</label>
+        <div className="inline-flex items-center rounded-md border border-neutral-300 overflow-hidden">
+          <button
+            type="button"
+            onClick={dec}
+            className="px-3 py-2 select-none text-lg leading-none hover:bg-neutral-100 disabled:opacity-40"
+            aria-label="Decrease quantity"
+            disabled={quantity <= 1}
+          >
+            −
+          </button>
+          <input
+            type="number"
+            value={quantity}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              if (Number.isNaN(val)) return;
+              setQuantity(Math.min(Math.max(1, val), maxQty));
+            }}
+            className="w-12 text-center outline-none py-2"
+            min={1}
+            max={maxQty}
+            aria-label="Quantity"
+          />
+          <button
+            type="button"
+            onClick={inc}
+            className="px-3 py-2 select-none text-lg leading-none hover:bg-neutral-100 disabled:opacity-40"
+            aria-label="Increase quantity"
+            disabled={quantity >= maxQty}
+          >
+            +
+          </button>
+        </div>
+        {finalVariant && finalVariant.inventoryQuantity !== undefined && (
+          <div className="mt-1 text-xs text-neutral-500">Max {maxQty} per order</div>
+        )}
+      </div>
+
       <SubmitButton
         availableForSale={availableForSale}
         isDisabled={!allOptionsSelected}

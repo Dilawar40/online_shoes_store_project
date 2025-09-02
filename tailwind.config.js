@@ -20,6 +20,18 @@ module.exports = {
             900: '#0c4a6e',
           },
         },
+        fontFamily: {
+          heading: [
+            'var(--font-playfair)',
+            'serif',
+          ],
+          body: [
+            'var(--font-inter)',
+            'ui-sans-serif',
+            'system-ui',
+            'sans-serif',
+          ],
+        },
       },
     },
     plugins: [],

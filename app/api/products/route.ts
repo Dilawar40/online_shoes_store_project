@@ -1,19 +1,26 @@
-"use server";
-
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+
+// Revalidate this route every 60 seconds (ISR)
+export const revalidate = 60;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // GET all products
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const url = new URL(req.url);
+    const limitParam = url.searchParams.get("limit");
+    const limit = Math.max(1, Math.min(100, Number(limitParam) || 40));
+
     const { data, error } = await supabase
       .from("products")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
     if (error) throw error;
 
     return NextResponse.json(data, { status: 200 });

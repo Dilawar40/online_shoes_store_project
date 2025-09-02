@@ -29,13 +29,7 @@ export function ProductProvider({ children, product }: ProductProviderProps) {
   const getInitialState = () => {
     const params: ProductState = {};
     for (const [key, value] of searchParams.entries()) {
-      // If this is a size option and contains slashes, it needs to be split
-      if ((key.toLowerCase() === 'size' || key.toLowerCase() === 'sizes') && value.includes('/')) {
-        // For initial state, we'll just take the first size as default
-        params[key] = value.split('/')[0].trim();
-      } else {
-        params[key] = value;
-      }
+      params[key] = value;
     }
     return params;
   };

@@ -1,6 +1,7 @@
 import Footer from "./components/footer";
 import HeroCarousel from "./components/HeroCarousel";
 import SearchClient from "./search/[[...collection]]/search-client";
+import ReviewsStrip from "@/components/reviews/reviews-strip";
 
 export const metadata = {
   description:
@@ -17,6 +18,7 @@ export default function HomePage() {
       <div className="bg-white">
         <SearchClient/>
       </div>
+      <ReviewsStrip />
       <Footer />
     </main>
   );

@@ -50,7 +50,7 @@ type CartAction =
 
 const CartContext = createContext<{
   cart: Cart;
-  addCartItem: (variant: ProductVariant, product: Product) => Promise<void>;
+  addCartItem: (variant: ProductVariant, product: Product, quantity?: number) => Promise<void>;
   updateCartItem: (id: string, updateType: UpdateType) => Promise<void>;
 } | null>(null);
 
@@ -296,7 +296,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     initializeCart();
   }, []);
 
-  const addCartItem = async (variant: ProductVariant, product: Product): Promise<void> => {
+  // Listen to global reset events (e.g., after order completion)
+  useEffect(() => {
+    const handler = () => {
+      const empty = { items: [], totalQuantity: 0, total: 0 } as Cart;
+      dispatch({ type: "SET_CART", payload: empty });
+      // Also clear guest cart storage
+      try { if (typeof window !== 'undefined') localStorage.removeItem('localCart'); } catch {}
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('cart:reset', handler);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('cart:reset', handler);
+      }
+    };
+  }, []);
+
+  const addCartItem = async (variant: ProductVariant, product: Product, quantity: number = 1): Promise<void> => {
     console.log('addCartItem called with:', { variant, product, cart });
     
     const { data: { user } } = await supabase.auth.getUser();
@@ -313,7 +331,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         updatedItems = [...cart.items];
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + 1
+          quantity: updatedItems[existingItemIndex].quantity + quantity
         };
       } else {
         // Add new item
@@ -321,7 +339,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           variant,
           product,
-          quantity: 1,
+          quantity: Math.max(1, quantity),
           price: variant.price,
         };
         updatedItems = [...cart.items, newItem];
@@ -367,7 +385,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           variant_id: variant.id,
           product,
           variant,
-          quantity: 1,
+          quantity: Math.max(1, quantity),
           price: variant.price,
         })
         .select()
@@ -384,7 +402,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           id: data.id,
           variant,
           product,
-          quantity: 1,
+          quantity: Math.max(1, quantity),
           price: variant.price,
         },
       });

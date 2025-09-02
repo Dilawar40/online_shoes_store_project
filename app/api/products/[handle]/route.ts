@@ -1,7 +1,8 @@
-"use server";
-
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+
+// Revalidate this route every 2 minutes (ISR)
+export const revalidate = 120;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;

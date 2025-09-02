@@ -10,14 +10,17 @@ import {
 
 // Transform database product to frontend product format
 export function transformProduct(dbProduct: DBProduct) {
-  const variants = dbProduct.variants?.map(variant => ({
+  const variants = (dbProduct.variants || []).map(variant => ({
     id: variant.id,
-    title: variant.options?.map(opt => opt.value.value).join(' / ') || '',
+    title: variant.options?.map((opt: any) => opt?.value?.value ?? opt?.value ?? '').filter(Boolean).join(' / ') || '',
     availableForSale: (variant.quantity || 0) > 0,
-    selectedOptions: variant.options?.map(opt => ({
-      name: opt.option.name,
-      value: opt.value.value
-    })) || [],
+    selectedOptions:
+      (variant.options
+        ?.map((opt: any) => ({
+          name: opt?.option?.name ?? opt?.name ?? '',
+          value: opt?.value?.value ?? opt?.value ?? ''
+        }))
+        .filter((o: any) => o.name && o.value)) || [],
     price: {
       amount: variant.price,
       currencyCode: dbProduct.currency_code || 'PKR'
@@ -34,7 +37,7 @@ export function transformProduct(dbProduct: DBProduct) {
       width: 800,
       height: 800
     }
-  })) || [];
+  }));
 
   return {
     id: dbProduct.id,
@@ -45,16 +48,21 @@ export function transformProduct(dbProduct: DBProduct) {
       amount: dbProduct.price,
       currencyCode: dbProduct.currency_code || 'PKR'
     },
-    priceRange: {
-      minVariantPrice: {
-        amount: Math.min(...variants.map(v => v.price.amount)),
-        currencyCode: dbProduct.currency_code || 'PKR'
-      },
-      maxVariantPrice: {
-        amount: Math.max(...variants.map(v => v.compareAtPrice?.amount || v.price.amount)),
-        currencyCode: dbProduct.currency_code || 'PKR'
+    priceRange: (() => {
+      const currency = dbProduct.currency_code || 'PKR';
+      if (!variants.length) {
+        return {
+          minVariantPrice: { amount: dbProduct.price, currencyCode: currency },
+          maxVariantPrice: { amount: dbProduct.compare_at_price || dbProduct.price, currencyCode: currency },
+        };
       }
-    },
+      const min = Math.min(...variants.map((v) => v.price.amount));
+      const max = Math.max(...variants.map((v) => v.compareAtPrice?.amount || v.price.amount));
+      return {
+        minVariantPrice: { amount: min, currencyCode: currency },
+        maxVariantPrice: { amount: max, currencyCode: currency },
+      };
+    })(),
     featuredImage: {
       url: dbProduct.featured_image_url || '',
       altText: dbProduct.title,
@@ -73,7 +81,10 @@ export function transformProduct(dbProduct: DBProduct) {
       values: opt.values?.map(v => v.value) || []
     })),
     variants,
-    collections: dbProduct.collections?.map(c => c.collection.handle) || [],
+    collections:
+      (dbProduct.collections
+        ?.map((c: any) => c?.collection?.handle || c?.handle)
+        .filter(Boolean)) || [],
     inventory: {
       status: variants.some(v => v.inventoryQuantity > 0) ? 'in_stock' : 'out_of_stock',
       quantity: variants.reduce((sum, v) => sum + v.inventoryQuantity, 0)

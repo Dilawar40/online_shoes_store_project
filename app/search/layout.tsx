@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import Footer from "@/app/components/footer";
 import Collections from "@/app/components/search/collections";
 import { sorting } from "@/app/lib/constants";
+import ReviewsStrip from "@/components/reviews/reviews-strip";
 
 export default function SearchLayout({
   children,
@@ -23,6 +24,7 @@ export default function SearchLayout({
         </div>
      
       </div>
+      <ReviewsStrip />
       <Footer />
     </>
   );

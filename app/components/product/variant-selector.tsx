@@ -43,11 +43,7 @@ export function VariantSelector({
   }));
 
   return options.map((option) => {
-    // If this is a size option and values contain a single string with slashes, split it
-    const isSizeOption = option.name.toLowerCase() === 'size' || option.name.toLowerCase() === 'sizes';
-    const values = isSizeOption && option.values.length === 1 && option.values[0].includes('/')
-      ? option.values[0].split('/').map(v => v.trim())
-      : option.values;
+    const values = option.values;
 
     return (
       <form key={option.id}>

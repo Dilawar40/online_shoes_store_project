@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { createClient } from "@supabase/supabase-js";
 
 interface Slide {
   id: string;
@@ -17,21 +16,14 @@ interface Slide {
 }
 
 async function fetchHeroSlides() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const { data, error } = await supabase
-    .from("slides")
-    .select("*")
-    .order("id");
-
-  if (error) {
-    console.error("Error fetching hero slides:", error);
-    return [];
+  try {
+    const res = await fetch("/api/slides?limit=8");
+    if (!res.ok) throw new Error("Failed to fetch slides");
+    return await res.json();
+  } catch (e) {
+    console.error("Error fetching hero slides:", e);
+    return [] as Slide[];
   }
-  return data;
 }
 
 export default function HeroCarousel() {

@@ -159,25 +159,37 @@ export function ProductDescription({ product: apiProduct }: ProductDescriptionPr
       {/* Product Title & Price */}
       <div className="mb-6 flex flex-col border-b pb-6 dark:border-neutral-700">
         <h1 className="mb-2 text-5xl font-medium">{product.title}</h1>
-        <div className="mr-auto w-auto rounded-full bg-blue-600 px-4 py-2 text-sm text-white shadow-md">
+        {/* Price block: show compare-at (original) crossed if on sale */}
+        <div className="flex items-center gap-3">
+          {apiProduct.max_price_amount > apiProduct.price_amount && (
+            <Price
+              amount={apiProduct.max_price_amount}
+              currencyCode={apiProduct.price_currency || 'PKR'}
+              className="text-neutral-500 line-through"
+              currencyCodeClassName="hidden"
+            />
+          )}
           <Price
-            amount={product.priceRange.maxVariantPrice.amount}
-            currencyCode={product.priceRange.maxVariantPrice.currencyCode}
+            amount={apiProduct.price_amount}
+            currencyCode={apiProduct.price_currency || 'PKR'}
+            className="text-2xl font-semibold text-neutral-900"
+            currencyCodeClassName="hidden"
           />
         </div>
+        {/* Random low stock notice */}
+        {(() => {
+          const lowStockCount = Math.floor(Math.random() * 10) + 1; // 1-10
+          return (
+            <div className="mt-2 text-sm text-red-600">
+              Low stock - {lowStockCount} items left
+            </div>
+          );
+        })()}
       </div>
 
       {/* Variant Selector */}
       <VariantSelector
-        options={apiProduct.options.map(option => ({
-          ...option,
-          // If this is a size option with a single value containing slashes, split it into multiple values
-          values: (option.name.toLowerCase() === 'size' || option.name.toLowerCase() === 'sizes') && 
-                 option.values.length === 1 && 
-                 option.values[0].includes('/')
-            ? option.values[0].split('/').map((v: string) => v.trim())
-            : option.values
-        }))}
+        options={apiProduct.options}
         variants={product.variants}
       />
 

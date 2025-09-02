@@ -18,6 +18,7 @@ import {
 import { useFormStatus } from "react-dom";
 import { createCartAndSetCookie, redirectToCheckout } from "./actions";
 import { useCart } from "./cart-context";
+import type { CartItem as OrderedCartItem } from "./cart-context";
 import { mapToEcommerceCartItem } from "@/app/lib/cart-utils";
 import LoadingDots from "../loading-dots";
 import Price from "../Price";
@@ -47,29 +48,24 @@ const CloseCart = ({ className }: { className?: string }) => (
   </div>
 );
 
-const CheckoutButton = () => {
+const CheckoutButton = ({ onBeforeNavigate }: { onBeforeNavigate?: () => void }) => {
   const [loading, setLoading] = useState(false);
+  const { cart } = useCart();
+  const router = useRouter();
 
   const handleCheckout = async () => {
+    if (!cart || !cart.items || cart.items.length === 0) return;
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/create-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: 1000 }), // paisa
-      });
-
-      const data = await res.json();
-      console.log("Safepay Checkout Response:", data);
-
-      // Laravel jaisa hosted checkout redirect
-      if (data?.redirect) {
-        window.location.href = data.redirect;
-      } else {
-        console.error("Redirect URL not found", data);
+      // Persist cart for the checkout page to render the summary
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('checkoutCart', JSON.stringify(cart));
       }
+      // Close the cart modal before navigating
+      onBeforeNavigate?.();
+      router.push('/checkout');
     } catch (err) {
-      console.error("Checkout Error", err);
+      console.error('Checkout navigation error', err);
     } finally {
       setLoading(false);
     }
@@ -81,7 +77,7 @@ const CheckoutButton = () => {
       disabled={loading}
       className="bg-blue-600 text-white px-4 py-2 rounded"
     >
-      {loading ? "Processing..." : "Proceed to Payment"}
+      {loading ? 'Processing...' : 'Proceed to Payment'}
     </button>
   );
 };
@@ -144,6 +140,9 @@ const CheckoutButton = () => {
 const CartModal = forwardRef<CartModalRef>((_props, ref) => {
   const { cart, updateCartItem } = useCart();
   const [isOpen, setIsOpen] = useState(false);
+  const [orderedItems, setOrderedItems] = useState<OrderedCartItem[]>([]);
+  const [showOrdered, setShowOrdered] = useState(false);
+  const orderedListRef = useRef<HTMLUListElement | null>(null);
 
   // Debug cart state
   useEffect(() => {
@@ -170,6 +169,50 @@ const CartModal = forwardRef<CartModalRef>((_props, ref) => {
     }
   }, [cart]);
 
+  // Load ordered items from sessionStorage (after orders complete)
+  useEffect(() => {
+    const load = () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const raw = sessionStorage.getItem('orderedItems');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const arr = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+          setOrderedItems(arr);
+        } else setOrderedItems([]);
+      } catch {
+        setOrderedItems([]);
+      }
+    };
+    load();
+    // refresh when the cart is reset (after order completion)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('cart:reset', load);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('cart:reset', load);
+      }
+    };
+  }, []);
+
+  // No auto-expand; ordered items only show when user toggles the button
+
+  // When showing ordered list or it updates, scroll to top
+  useEffect(() => {
+    if (showOrdered && orderedListRef.current) {
+      try { orderedListRef.current.scrollTop = 0; } catch {}
+    }
+  }, [showOrdered, orderedItems]);
+
+  const clearOrderedItems = () => {
+    if (typeof window !== 'undefined') {
+      try { sessionStorage.removeItem('orderedItems'); } catch {}
+    }
+    setOrderedItems([]);
+    setShowOrdered(false);
+  };
+
   // Removed auto-open functionality to prevent cart from opening on page load
   // You can re-enable this if you want the cart to open when items are added
   // while the cart is closed
@@ -184,6 +227,29 @@ const CartModal = forwardRef<CartModalRef>((_props, ref) => {
     openCart,
     closeCart,
   }));
+
+  // Allow opening cart from anywhere
+  useEffect(() => {
+    const handler = () => openCart();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('open-cart', handler);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('open-cart', handler);
+      }
+    };
+  }, []);
+
+  // Open automatically if flag set (e.g., after redirect)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const flag = sessionStorage.getItem('openCartOnHome');
+    if (flag === '1') {
+      sessionStorage.removeItem('openCartOnHome');
+      openCart();
+    }
+  }, []);
 
   return (
     <>
@@ -213,22 +279,68 @@ const CartModal = forwardRef<CartModalRef>((_props, ref) => {
             leaveTo="translate-x-full"
           >
             <Dialog.Panel className="fixed bottom-0 right-0 top-0 flex h-full w-full flex-col border-l border-neutral-200 bg-white/80 p-6 text-black backdrop-blur-xl md:w-[390px] dark:border-neutral-700 dark:bg-black/80 dark:text-white">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <p className="text-lg font-semibold">My Cart</p>
-                <button aria-label="Close cart" onClick={closeCart}>
-                  <CloseCart />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowOrdered((v) => !v)}
+                    disabled={!orderedItems?.length}
+                    className="rounded border border-neutral-300 px-2 py-1 text-xs disabled:opacity-50 dark:border-neutral-700"
+                    title={orderedItems?.length ? "View ordered items" : "No ordered items yet"}
+                  >
+                    {showOrdered ? 'Hide ordered items' : 'Show ordered items'}{orderedItems?.length ? ` (${orderedItems.length})` : ''}
+                  </button>
+                  <button aria-label="Close cart" onClick={closeCart}>
+                    <CloseCart />
+                  </button>
+                </div>
               </div>
 
               {!cart ||
                 !Array.isArray(cart.items) ||
                 cart.items.length === 0 ? (
-                <div className="mt-20 flex w-full flex-col items-center justify-center overflow-hidden">
-                  <ShoppingCartIcon className="h-16" />
-                  <p className="mt-6 text-center text-2xl font-bold">
-                    Your cart is empty.
-                  </p>
-                </div>
+                showOrdered && orderedItems?.length ? (
+                  <div className="mt-2 rounded-md border border-neutral-200 p-3 dark:border-neutral-700">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm font-semibold">Ordered items</p>
+                      <button onClick={clearOrderedItems} className="text-xs text-blue-600 hover:underline">Clear</button>
+                    </div>
+                    <ul ref={orderedListRef} className="max-h-80 space-y-3 overflow-auto">
+                      {orderedItems.map((item, i) => (
+                        <li key={`ordered-empty-${i}`} className="flex items-center justify-between gap-3 border-b border-neutral-200 pb-2 last:border-b-0 dark:border-neutral-700">
+                          <div className="flex items-center gap-3">
+                            <div className="relative h-10 w-10 overflow-hidden rounded border border-neutral-300 dark:border-neutral-700">
+                              <Image
+                                className="h-full w-full object-cover"
+                                width={40}
+                                height={40}
+                                alt={item.product.images?.[0]?.altText || item.product.title}
+                                src={item.product.images?.[0]?.url || "/placeholder-product.jpg"}
+                              />
+                            </div>
+                            <div className="leading-tight">
+                              <p className="text-sm font-medium">{item.product.title}</p>
+                              <p className="text-xs text-neutral-500">{item.variant?.title}</p>
+                              <p className="text-[10px] text-neutral-500">Qty: {item.quantity}</p>
+                            </div>
+                          </div>
+                          <Price
+                            className="text-sm"
+                            amount={item.price.amount * item.quantity}
+                            currencyCode={item.price.currencyCode}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="mt-20 flex w-full flex-col items-center justify-center overflow-hidden">
+                    <ShoppingCartIcon className="h-16" />
+                    <p className="mt-6 text-center text-2xl font-bold">
+                      Your cart is empty.
+                    </p>
+                  </div>
+                )
               ) : (
                 <div className="flex h-full flex-col justify-between overflow-hidden p-1">
                   <ul className="grow overflow-auto py-4">
@@ -381,6 +493,43 @@ const CartModal = forwardRef<CartModalRef>((_props, ref) => {
                         );
                       })}
                   </ul>
+                  {/* Ordered items (recently purchased) - toggled */}
+                  {showOrdered && orderedItems?.length ? (
+                    <div className="mt-2 rounded-md border border-neutral-200 p-3 dark:border-neutral-700">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-sm font-semibold">Ordered items</p>
+                        <button onClick={clearOrderedItems} className="text-xs text-blue-600 hover:underline">Clear</button>
+                      </div>
+                      <ul ref={orderedListRef} className="max-h-80 space-y-3 overflow-auto">
+                        {orderedItems.map((item, i) => (
+                          <li key={`ordered-${i}`} className="flex items-center justify-between gap-3 border-b border-neutral-200 pb-2 last:border-b-0 dark:border-neutral-700">
+                            <div className="flex items-center gap-3">
+                              <div className="relative h-10 w-10 overflow-hidden rounded border border-neutral-300 dark:border-neutral-700">
+                                <Image
+                                  className="h-full w-full object-cover"
+                                  width={40}
+                                  height={40}
+                                  alt={item.product.images?.[0]?.altText || item.product.title}
+                                  src={item.product.images?.[0]?.url || "/placeholder-product.jpg"}
+                                />
+                              </div>
+                              <div className="leading-tight">
+                                <p className="text-sm font-medium">{item.product.title}</p>
+                                <p className="text-xs text-neutral-500">{item.variant?.title}</p>
+                                <p className="text-[10px] text-neutral-500">Qty: {item.quantity}</p>
+                              </div>
+                            </div>
+                            <Price
+                              className="text-sm"
+                              amount={item.price.amount * item.quantity}
+                              currencyCode={item.price.currencyCode}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
                   <div className="py-4 text-sm text-neutral-500 dark:text-neutral-400">
                     <div className="mb-3 flex items-center justify-between border-b border-neutral-200 pb-1 dark:border-neutral-700">
                       <p>Subtotal</p>
@@ -422,7 +571,7 @@ const CartModal = forwardRef<CartModalRef>((_props, ref) => {
                     </div>
                   </div>
                   <div className="mt-6">
-                    <CheckoutButton />
+                    <CheckoutButton onBeforeNavigate={closeCart} />
                   </div>
                 </div>
               )}

@@ -5,6 +5,9 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 
+// Revalidate GET responses every 5 minutes
+export const revalidate = 300;
+
 // Initialize the Supabase client for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -22,13 +25,18 @@ const staticSlides = [
   }
 ];
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    // For GET requests, we'll just return all slides (no upsert)
+    const url = new URL(req.url);
+    const limitParam = url.searchParams.get('limit');
+    const limit = Math.max(1, Math.min(20, Number(limitParam) || 8));
+
+    // Return a small, optimized payload
     const { data, error } = await supabase
       .from('slides')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('id,title,description,cta_text,cta_link,image_url,alt_text')
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
     if (error) {
       console.error('Fetch Error:', error);

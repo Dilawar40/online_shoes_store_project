@@ -63,7 +63,10 @@ export default function AdminPage() {
           <h2 className="text-xl font-semibold mb-2">Products</h2>
           <p className="text-gray-600">Manage your products</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div
+          className="bg-white p-6 rounded-lg shadow cursor-pointer"
+          onClick={() => router.push("/admin/orders")}
+        >
           <h2 className="text-xl font-semibold mb-2">Orders</h2>
           <p className="text-gray-600">View and manage orders</p>
         </div>
